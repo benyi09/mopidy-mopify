@@ -9,7 +9,7 @@ angular.module('mopify.services.mopidy', [
     'llNotifier'
 ])
 
-.factory("mopidyservice", function($q, $rootScope, $cacheFactory, $location, Settings, notifier){
+.factory("mopidyservice", function($q, $http, $rootScope, $cacheFactory, $location, Settings, notifier){
 	// Create consolelog object for Mopidy to log it's logs on
     var consoleError = console.error.bind(console);
 
@@ -67,7 +67,21 @@ angular.module('mopify.services.mopidy', [
 		return context[func].apply(context, args);
 	}
 
+    /**
+     * Get the Mopify settings provided in the Mopidy.conf file
+     * @return {Object} the settings
+     */
+    function getMopidySettings(){
+        var deferred = $q.defer();
 
+        $http.get('/mopify-settings/settings').success(function(data, status, headers, config) {
+            deferred.resolve(data);
+        }).error(function(data, status, headers, config) {
+            deferred.reject(data);
+        });
+
+        return deferred.promise;
+    }
 
 	return {
 		mopidy: {},
@@ -334,6 +348,10 @@ angular.module('mopify.services.mopidy', [
         },
         removeFromTracklist: function(dict){
             return wrapMopidyFunc("mopidy.tracklist.remove", this)({ criteria: dict });
+        },
+
+        getSettings: function(){
+            return getMopidySettings();
         }
 
 	};

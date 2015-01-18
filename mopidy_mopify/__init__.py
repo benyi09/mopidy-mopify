@@ -6,7 +6,7 @@ import tornado.web
 
 from mopidy import config, ext
 
-__version__ = "1.2.0"
+__version__ = '1.1.4'
 __ext_name__ = "mopify"
 
 class MopifyExtension(ext.Extension):
@@ -45,7 +45,7 @@ class RequestHandler(tornado.web.RequestHandler):
         self.core = core
 
     def get(self):
-        self.write("This page is used for mopify's general settings. Please open <a href='/mopify'>Mopify</a> for the player.")
+        self.write("This extension is part of Mopify and is used to retrieve the settings provided in your Mopidy.conf file.")
 
 class SettingsRequestHandler(tornado.web.RequestHandler):
     ext_name = __ext_name__
@@ -56,6 +56,7 @@ class SettingsRequestHandler(tornado.web.RequestHandler):
 
     def get(self):
         self.write("%s" % self.config_file)
+
 
 def mopify_settings_factory(config, core):
     return [

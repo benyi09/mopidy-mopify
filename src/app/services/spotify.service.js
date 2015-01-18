@@ -240,6 +240,14 @@ angular.module("mopify.services.spotifylogin", [
     };
 
     /**
+     * Disconnect and login again
+     */
+    SpotifyLogin.prototype.reauth = function() {
+        this.disconnect();
+        this.login();
+    };
+
+    /**
      * Request a key from spotify.
      * This is done by sending a request to the bitlabs server which will return the saved spotify key
      * @param  {$.defer} deferred 

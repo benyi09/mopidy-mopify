@@ -29,6 +29,17 @@
     <div class="pagecontent row">
         <div class="settingwrap row">
             <div class="label col-md-2">
+                <label>Use the general Spotify account settings</label>
+            </div>
+            <div class="input col-md-4">
+                <toggle-switch ng-model="settings.spotify.usegeneral" ng-click="switchSettingsSource()"><toggle-switch>
+            </div>
+            <div class="description col-md-4 col-md-offset-1">
+                <p>When enabled the Spotify service will use the account provided in Mopidy's config file.</p>
+            </div>
+        </div>
+        <div class="settingwrap row">
+            <div class="label col-md-2">
                 <label>Use Spotify as playlist source</label>
             </div>
             <div class="input col-md-4">
