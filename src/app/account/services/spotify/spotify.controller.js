@@ -18,11 +18,7 @@ angular.module("mopify.account.services.spotify", [
 })
 
 
-<<<<<<< HEAD
 .controller("SpotifyServiceController", function SpotifyServiceController($scope, $location, ServiceManager, Settings, Spotify, SpotifyLogin, mopidyservice, notifier){
-=======
-.controller("SpotifyServiceController", function SpotifyServiceController($scope, $location, ServiceManager, Settings, Spotify, SpotifyLogin){
->>>>>>> development
     if(!ServiceManager.isEnabled("spotify")){
         $location.path("/account/services");
         return;
@@ -37,7 +33,6 @@ angular.module("mopify.account.services.spotify", [
     });
 
     /**
-<<<<<<< HEAD
      * Get a setting from the given string by key
      * @param  {String} key  the key to get the value from
      * @param  {String} data the complete settings string
@@ -76,7 +71,7 @@ angular.module("mopify.account.services.spotify", [
         }
     };
 
-=======
+    /*
      * Disconnect and connect with Spotify
      * @return {[type]} [description]
      */
@@ -84,7 +79,6 @@ angular.module("mopify.account.services.spotify", [
         SpotifyLogin.disconnect();
         SpotifyLogin.login();
     };
->>>>>>> development
 })
 
 .controller("SpotifyMenuController", function SpotifyMenuController($q, $scope, Spotify, SpotifyLogin){
