@@ -301,6 +301,10 @@ angular.module('mopify.services.mopidy', [
         shuffleTracklist: function(){
             return wrapMopidyFunc("mopidy.tracklist.shuffle", this)();
         },
+        
+        playNext: function(tltrack){
+            return wrapMopidyFunc("mopidy.tracklist.eotTrack", this)({ tl_track: tltrack });
+        },
 
         play: function(tltrack) {
             if(tltrack !== undefined){
@@ -329,6 +333,10 @@ angular.module('mopify.services.mopidy', [
 
         next: function() {
             return wrapMopidyFunc("mopidy.playback.next", this)();
+        },
+
+        setConsume: function(){
+            return wrapMopidyFunc("mopidy.tracklist.setConsume", this)([ true ]);
         },
 
         getRandom: function () {

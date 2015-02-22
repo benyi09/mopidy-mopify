@@ -1,15 +1,15 @@
-<div class="tileart" context-menu
+<div class="tileart" context-menu="onContextShow()"
      data-target="menu-{{ artist.uri }}"
      ng-class="{ 'highlight': highlight, 'expanded' : expanded }">
     <div class="hoverwrap">
         <div class="iconwrap row">
-            <div class="icon small col-xs-4">
+            <div class="icon small col-xs-4" title="Show artist's tracks">
                 <a href="#/music/artist/{{ artist.uri }}"><i class="ss-icon ss-list"></i></a>
             </div>
-            <div class="icon col-xs-4">
+            <div class="icon col-xs-4" title="Play artist">
                 <i class="ss-icon ss-play" ng-click="play()"></i>
             </div>
-            <div class="icon small col-xs-4">
+            <div class="icon small col-xs-4" title="Start new station for: {{ artist.name }}">
                 <i class="ss-icon ss-wifi" ng-click="startStation()"></i>
             </div>
         </div>
@@ -34,6 +34,10 @@
         <li class="divider"></li>
         <li ng-click="startStation()">
             Start station
+        </li>
+        <li class="divider"></li>
+        <li ng-click="toggleFollowArtist()" ng-show='showFollowArtist'>
+            {{ (followingArtist) ? 'Unfollow artist' : 'Follow artist' }}
         </li>
     </ul>
 </div>

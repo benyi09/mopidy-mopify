@@ -6,12 +6,14 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="description" content="">
-        <!--<meta name="viewport" content="width=device-width, initial-scale=1">-->
+        <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <meta name="version" content="<%= version %>">
 
         <link href='http://fonts.googleapis.com/css?family=Roboto+Condensed:400,300,700' rel='stylesheet' type='text/css'>
         <link rel="stylesheet" href="assets/webfonts/ss-standard.css">
+
+        <link href="assets/images/favicon.ico" rel="icon" type="image/x-icon" />
 
         <% styles.forEach( function ( file ) { %> 
         <link rel="stylesheet" type="text/css" href="<%= file %>" /> <% 
@@ -24,7 +26,7 @@
         <div id="application" class="fullheight">
             <div class="container-fluid fullheight">
                 <div class="row fullheight">
-                    <div id="leftside" class="fullheight">
+                    <div id="leftside" class="fullheight" ng-class="{ show: showmobilemenu }">
                         <div id="menu">
                             <ng-include src="'search/menu.tmpl.html'"></ng-include>
                             <ng-include src="'discover/menu.tmpl.html'"></ng-include>
@@ -36,6 +38,9 @@
                     </div>
 
                     <div id="mainwrap" class="fullheight">
+                        <div class="mobilemenutoggle" ng-click="showmobilemenu = !showmobilemenu">
+                            <div class="line"></div>
+                        </div>
                         <div class="container-fluid fullheight" ng-view></div>
                     </div>
                 </div>

@@ -2,13 +2,14 @@
 
 angular.module('mopify.player.controls', [
     'mopify.services.mopidy',
-    'mopify.services.station'
+    'mopify.services.station',
+    'cfp.hotkeys'
 ])
 
 /**
  * After defining the routes we create the controller for this module
  */
-.controller("PlayerControlsController", function PlayerControlsController($scope, mopidyservice, stationservice){
+.controller("PlayerControlsController", function PlayerControlsController($scope, $rootScope, mopidyservice, stationservice, hotkeys){
     $scope.volume = 0;
     $scope.isRandom = false;
     $scope.isPlaying = false;
@@ -17,7 +18,12 @@ angular.module('mopify.player.controls', [
 
     // Check for messages about the current playbackstate
     $scope.$on('mopidy:event:playbackStateChanged', function(event, data) {
+        $scope.stateIcon = (data.new_state === 'playing') ? 'ss-pause' : "ss-play";
         $scope.isPlaying = (data.new_state === 'playing');
+    });
+
+    $scope.$on('mopidy:event:volumeChanged', function(event, data){
+        $scope.volume = data.volume;
     });
 
     // If Mopidy is online we collect the init data about playback, volume and shuffle mode
@@ -37,7 +43,7 @@ angular.module('mopify.player.controls', [
         // Get playback state
         mopidyservice.getState().then(function(state){
             $scope.isPlaying = (state === 'playing');
-            $scope.stateIcon = "ss-pause";
+            $scope.stateIcon = (state === 'playing') ? 'ss-pause' : "ss-play";
         });
 
         // Get shuffle
@@ -52,11 +58,15 @@ angular.module('mopify.player.controls', [
     });
 
     $scope.next = function(){
-        mopidyservice.next();
+        mopidyservice.next().then(function(data){
+            $rootScope.$broadcast("mopify:player:updatePlayerInformation");  
+        });
     };
 
     $scope.prev = function(){
-        mopidyservice.previous();
+        mopidyservice.previous().then(function(data){
+            $rootScope.$broadcast("mopify:player:updatePlayerInformation");  
+        });
     };
 
     $scope.playpause = function(){
@@ -109,6 +119,16 @@ angular.module('mopify.player.controls', [
         }
     };
 
+    $scope.raiseVolume = function(){
+        $scope.volume = ($scope.volume + 5 <= 95) ? $scope.volume + 5 : 100;
+        mopidyservice.setVolume($scope.volume);
+    };
+
+    $scope.lowerVolume = function(){
+        $scope.volume = ($scope.volume - 5 >= 5) ? $scope.volume - 5 : 0;
+        mopidyservice.setVolume($scope.volume);
+    };
+
     $scope.toggleShuffle = function(){
         $scope.isRandom = !$scope.isRandom;
         mopidyservice.setRandom($scope.isRandom);
@@ -118,5 +138,65 @@ angular.module('mopify.player.controls', [
         $scope.isRepeat = !$scope.isRepeat;
         mopidyservice.setRepeat($scope.isRepeat);
     };
+
+    /**
+     * Bind the shortcuts
+     */
+    hotkeys.add({
+        combo: 'ctrl+left',
+        description: 'Play previous track',
+        callback: function(event, hotkey) {
+            event.preventDefault();
+            $scope.prev();
+        }
+    });
+    hotkeys.add({
+        combo: 'ctrl+right',
+        description: 'Play the next track',
+        callback: function(event, hotkey) {
+            event.preventDefault();
+            $scope.next();
+        }
+    });
+    hotkeys.add({
+        combo: 'space',
+        description: 'Play/Pause',
+        callback: function(event, hotkey) {
+            event.preventDefault();
+            $scope.playpause();
+        }
+    });
+    hotkeys.add({
+        combo: 'ctrl+up',
+        description: 'Raise volume',
+        callback: function(event, hotkey) {
+            event.preventDefault();
+            $scope.raiseVolume();
+        }
+    });
+    hotkeys.add({
+        combo: 'ctrl+down',
+        description: 'Lower volume',
+        callback: function(event, hotkey) {
+            event.preventDefault();
+            $scope.lowerVolume();
+        }
+    });
+    hotkeys.add({
+        combo: 's',
+        description: 'Toggle shuffle mode',
+        callback: function(event, hotkey) {
+            event.preventDefault();
+            $scope.toggleShuffle();
+        }
+    });
+    hotkeys.add({
+        combo: 'r',
+        description: 'Toggle repeat mode',
+        callback: function(event, hotkey) {
+            event.preventDefault();
+            $scope.toggleRepeat();
+        }
+    });
 
 });

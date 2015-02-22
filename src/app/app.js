@@ -12,6 +12,8 @@ angular.module('mopify', [
     'mopify.music.artist',
     'mopify.music.playlists',
     'mopify.music.stations',
+    'mopify.music.library.albums',
+    'mopify.music.library.artists',
     'mopify.player',
     'mopify.player.controls',
     'mopify.player.seekbar',
@@ -31,17 +33,19 @@ angular.module('mopify', [
     'ErrorCatcher'
 ])
 
-.config(function($routeProvider, localStorageServiceProvider, EchonestProvider, SpotifyProvider){
+.config(function($routeProvider, $httpProvider, localStorageServiceProvider, EchonestProvider, SpotifyProvider){
     localStorageServiceProvider.setPrefix("mopify");
     EchonestProvider.setApiKey("UVUDDM7M0S5MWNQFV");
 
     SpotifyProvider.setClientId('b6b699a5595b406d9bfba11bee303aa4');
     SpotifyProvider.setRedirectUri('http://mopify.bitlabs.nl/auth/spotify/callback/');
-    SpotifyProvider.setScope('user-read-private playlist-read-private playlist-modify-private playlist-modify-public');
+    SpotifyProvider.setScope('user-read-private playlist-read-private playlist-modify-private playlist-modify-public user-library-read user-library-modify user-follow-modify user-follow-read');
 
     $routeProvider.otherwise({
         redirectTo: '/discover/featured'
     });
+
+    $httpProvider.interceptors.push('SpotifyAuthenticationIntercepter');
 })
 
 .controller("AppController", function AppController($scope, $rootScope, $http, $location, $window, mopidyservice, notifier, VersionManager, localStorageService){
@@ -51,6 +55,16 @@ angular.module('mopify', [
     };
 
     var defaultPageTitle = 'Mopify';
+
+    $scope.showmobilemenu = false;
+
+    $rootScope.selectedtracks = []; 
+
+    $rootScope.$on("$routeChangeStart", function (event, next, current) {
+        $scope.showmobilemenu = false;
+
+        $rootScope.selectedtracks = []; 
+    });
 
     // Set version in the rootscope
     $rootScope.mopifyversion = VersionManager.version;
@@ -74,6 +88,9 @@ angular.module('mopify', [
         mopidyservice.getCurrentTrack().then(function(track){
             updateTitle(track);
         });
+
+        // Set consume mode on
+        mopidyservice.setConsume();
     });
 
     // Listen for messages

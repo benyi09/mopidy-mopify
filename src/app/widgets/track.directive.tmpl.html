@@ -1,7 +1,8 @@
-<div class="track" context-menu
+<div class="track" context-menu="onContextShow()" context-menu-close="onContextClose()"
     data-target="{{ track.uri || track.tlid }}"
-    ng-class="{ 'highlight': highlight, 'expanded' : expanded, 'loading': track.loading }"
-    ng-dblclick="play()"
+    ng-class="{ 'highlight': highlight, 'expanded' : expanded, 'loading': track.loading, 'selected': selected }"
+    hm-doubletap="play()"
+    ng-click="selectTrack($event)"
     ng-show="visible">
 
     <div class="row" ng-class="{'nowplaying': ($parent.currentPlayingTrack.uri == track.uri)}">
@@ -19,50 +20,15 @@
         </div>
     </div>
 </div>
-<div class="selectplaylist" ng-show='showplaylists'>
-    <div class="close" ng-click="showplaylists = false">
-        Close
-    </div>
-    <div class="row">
-        <div class="col-lg-3 col-md-4 col-sm-6">
-            <ul class="playlists" role="menu">
-                <li ng-repeat="playlist in userplaylists" ng-if="$index % 4 == 0" ng-click="addToPlaylist(playlist.uri)">
-                    {{ playlist.name }}
-                </li>
-            </ul>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6">
-            <ul class="dropdown-menu" role="menu">
-                <li ng-repeat="playlist in userplaylists" ng-if="$index % 4 == 1" ng-click="addToPlaylist(playlist.uri)">
-                    {{ playlist.name }}
-                </li>
-            </ul>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6">
-            <ul class="dropdown-menu" role="menu">
-                <li ng-repeat="playlist in userplaylists" ng-if="$index % 4 == 2" ng-click="addToPlaylist(playlist.uri)">
-                    {{ playlist.name }}
-                </li>
-            </ul>
-        </div>
-        <div class="col-lg-3 col-md-4 col-sm-6">
-            <ul class="dropdown-menu" role="menu">
-                <li ng-repeat="playlist in userplaylists" ng-if="$index % 4 == 3" ng-click="addToPlaylist(playlist.uri)">
-                    {{ playlist.name }}
-                </li>
-            </ul>
-        </div>
-    </div>
-</div>
 
 <div class="contextmenu position-fixed" id="{{ track.uri || track.tlid }}">
     <ul class="dropdown-menu" role="menu">
         <li ng-click="play()">
-            Play
+            Play track<span ng-show="multipleselected">s</span>
         </li>
         <li class="divider"></li>
         <li ng-click="addToQueue()">
-            Add to queue
+            Add track<span ng-show="multipleselected">s</span> to queue
         </li>
         <li ng-show="$parent.type == 'tracklist'" ng-click="removeFromQueue()">
             Remove from queue
@@ -77,6 +43,10 @@
         </li>
         <li ng-if="$parent.isowner" ng-click="removeFromPlaylist()">
             Remove from playlist
+        </li>
+        <li class="divider"></li>
+        <li ng-click="toggleSaveTrack()" ng-show='showSaveTrack'>
+            {{ (trackAlreadySaved) ? 'Remove track from library' : 'Save track in library' }}
         </li>
     </ul>
 </div>

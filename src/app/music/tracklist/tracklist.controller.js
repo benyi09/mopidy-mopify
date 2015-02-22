@@ -9,6 +9,7 @@ angular.module('mopify.music.tracklist', [
     'mopify.services.servicemanager',
     'spotify',
     'ngSanitize',
+    'llNotifier',
     'mopify.widgets.directive.track',
     'infinite-scroll'
 ])
@@ -26,7 +27,7 @@ angular.module('mopify.music.tracklist', [
 /**
  * After defining the routes we create the controller for this module
  */
-.controller("TracklistController", function TracklistController($scope, $timeout, $routeParams, mopidyservice, stationservice, util, Spotify, SpotifyLogin, ServiceManager){
+.controller("TracklistController", function TracklistController($scope, $rootScope, $timeout, $routeParams, mopidyservice, stationservice, util, Spotify, SpotifyLogin, ServiceManager, notifier){
     // Grab params in var
     var uri = $routeParams.uri;
 
@@ -43,15 +44,44 @@ angular.module('mopify.music.tracklist', [
         loadCurrentTrack();
     }
 
+    var albumtracks = [];
+
     // Define the type from the uri parameter
     if(uri.indexOf(":playlist:") > -1)
         $scope.type = "Playlist";
 
-    if(uri.indexOf(":album:") > -1)
+    if(uri.indexOf(":album:") > -1){
         $scope.type = "Album";    
+
+        $scope.albumAlreadySaved = false;
+
+        if(ServiceManager.isEnabled("spotify") && SpotifyLogin.connected){
+            // First get the album's tracks
+            Spotify.getAlbumTracks(uri, {limit: 50}).then(function(response){
+                albumtracks = _.map(response.items, function(track){
+                    return track.id;
+                });
+
+                // Check if the user is already following the tracks
+                Spotify.userTracksContains(albumtracks).then(function (following) {
+                    $scope.albumAlreadySaved = following[0];
+                });
+            });
+
+            $scope.showSaveAlbum = true;
+        }
+        else{
+            $scope.showSaveAlbum = false;
+        }
+    }
 
     if(uri.indexOf("mopidy:current") > -1){
         $scope.type = "tracklist";    
+        $scope.coverImage = "./assets/images/tracklist-header.jpg";
+    }
+
+    if(uri.indexOf("spotify:library:songs") > -1){
+        $scope.type = "My Music - Songs";    
         $scope.coverImage = "./assets/images/tracklist-header.jpg";
     }
 
@@ -62,12 +92,21 @@ angular.module('mopify.music.tracklist', [
 
         Spotify.getCurrentUser().then(function(data){
             if(ownerid == data.id){
-                $scope.isowner = true;            }
+                $scope.isowner = true;            
+            }
         });
     }
 
     // Check if a name has been defined
-    $scope.name = ($routeParams.name !== undefined) ? $routeParams.name : ((uri.indexOf("mopidy:") > -1) ? "Current tracklist" : "");
+    if($routeParams.name !== undefined)
+        $scope.name = $routeParams.name;
+    else if(uri.indexOf("mopidy:") > -1)
+        $scope.name = "Current tracklist";
+    else if(uri.indexOf("spotify:library:songs") > -1)
+        $scope.name = "Your music: Songs";
+    else
+        $scope.name = "";
+
     $scope.tracks = [];
     $scope.currentPlayingTrack = {};
 
@@ -75,6 +114,16 @@ angular.module('mopify.music.tracklist', [
 
     if($scope.type == "Playlist"){
         loadSpotifyInfo();
+    }
+
+    // Load the user's library tracks is the type equals songs
+    if($scope.type == "My Music - Songs"){
+        
+        $rootScope.$on("mopify:spotify:connected", function(){
+            loadSpotifyLibraryTracks();
+        });
+
+        loadSpotifyLibraryTracks();
     }
 
     /**
@@ -162,6 +211,38 @@ angular.module('mopify.music.tracklist', [
     }
 
     /**
+     * Load the user's Spotify Library tracks
+     * @param {int} offset the offset to load the track, will be zero if not defined
+     */
+    function loadSpotifyLibraryTracks(offset){
+        if(ServiceManager.isEnabled("spotify") && SpotifyLogin.connected){
+
+            if(offset === undefined)
+                offset = 0;
+
+            Spotify.getSavedUserTracks({
+                limit: 50,
+                offset: offset
+            }).then(function(response){
+
+                // Map all track from the response's items array
+                var tracks = _.map(response.items, function(item){
+                    return item.track;
+                });
+
+                // Concat with previous tracks
+                $scope.tracks = $scope.tracks.concat(tracks);
+
+                if(response.next !== null)
+                    loadSpotifyLibraryTracks(offset + 50);
+            });
+        }
+        else if(!ServiceManager.isEnabled("spotify")){
+            notifier.notify({type: "custom", template: "Please connect with the Spotify service first.", delay: 3000});
+        }
+    }
+
+    /**
      * Get an album image from Spotify
      * @param  {track} track
      */
@@ -170,6 +251,39 @@ angular.module('mopify.music.tracklist', [
             $scope.coverImage = data.album.images[0].url;
         });
     }
+
+    /**
+     * Remove the album from the user's library
+     */
+    $scope.toggleSaveAlbum = function(){
+        if($scope.type == "Album"){
+            if(ServiceManager.isEnabled("spotify") && SpotifyLogin.connected){
+
+                if($scope.albumAlreadySaved){
+                    // Remove
+                    Spotify.removeUserTracks(albumtracks).then(function (data) {
+                        notifier.notify({type: "custom", template: "Album succesfully removed.", delay: 5000});   
+                        $scope.albumAlreadySaved = false;
+                    }, function(data){
+                        notifier.notify({type: "custom", template: "Something wen't wrong, please try again.", delay: 5000});   
+                    });
+                }
+                else{
+                    // Save
+                    Spotify.saveUserTracks(albumtracks).then(function (data) {
+                        notifier.notify({type: "custom", template: "Album succesfully saved.", delay: 5000});   
+                        $scope.albumAlreadySaved = true;
+                    }, function(data){
+                        notifier.notify({type: "custom", template: "Something wen't wrong, please try again.", delay: 5000});   
+                    });   
+                }
+
+            }
+            else{
+                notifier.notify({type: "custom", template: "Can't add album. Are you connected with Spotify?", delay: 5000});   
+            }
+        }
+    };
 
     /**
      * Add the current tracks to the tracklist, shuffle them and play
@@ -200,7 +314,7 @@ angular.module('mopify.music.tracklist', [
             stationservice.startFromTracks($scope.tracks);
     };
 
-    var tracksPerCall = 50;
+    var tracksPerCall = 20;
 
     /*
      * Add {trackspercall} tracks to the scope

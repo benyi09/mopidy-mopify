@@ -1,10 +1,12 @@
 angular.module("mopify.services.spotifylogin", [
     'spotify',
     'mopify.services.servicemanager',
-    'LocalStorageModule'
+    'mopify.services.versionmanager',
+    'LocalStorageModule',
+    'mopify.services.util'
 ])
 
-.factory("SpotifyLogin", function($q, $rootScope, $timeout, $document, $http, Spotify, $interval, ServiceManager, localStorageService){
+.factory("SpotifyLogin", function($q, $rootScope, $timeout, $document, $http, Spotify, $interval, ServiceManager, localStorageService, VersionManager, util){
     "use strict";
 
     // Get body
@@ -31,7 +33,6 @@ angular.module("mopify.services.spotifylogin", [
 
     function SpotifyLogin(){
         this.frame = frame;
-        this.waitingline = [];
         this.connected = false;
         this.lastPositiveLoginCheck = 0;
 
@@ -40,11 +41,13 @@ angular.module("mopify.services.spotifylogin", [
             this.refresh_token = localStorageService.get(tokenStorageKey).refresh_token;
             this.expires = localStorageService.get(tokenStorageKey).expires_in;
             this.access_token = localStorageService.get(tokenStorageKey).access_token;
+            this.mopifyversion = localStorageService.get(tokenStorageKey).mopifyversion;
         }
         else{
             this.refresh_token = null;
             this.expires = null;
             this.access_token = null;
+            this.mopifyversion = VersionManager.version;
         }
 
         // Get the login status from Spotify
@@ -54,6 +57,10 @@ angular.module("mopify.services.spotifylogin", [
 
         // Start token checking
         this.checkTokens();
+
+        // Check if old token which needs refresh after installing a new version
+        // This makes sure the new scopes are added to the toke
+        this.checkOldToken();
     }
 
     /**
@@ -157,7 +164,8 @@ angular.module("mopify.services.spotifylogin", [
                 localStorageService.set(tokenStorageKey, {
                     access_token: that.access_token,
                     refresh_token: that.refresh_token,
-                    expires_in: that.expires
+                    expires_in: that.expires,
+                    mopifyversion: VersionManager.version
                 });
 
                 deferred.resolve(result.response);
@@ -169,6 +177,24 @@ angular.module("mopify.services.spotifylogin", [
     };
 
     /**
+     * Check if the current user's token passes the min software version
+     * This can be used when new scopes are added and the user has to give
+     * permisions for these scopes
+     */
+    SpotifyLogin.prototype.checkOldToken = function(){
+        var minversion = '1.2.0';
+        var compare = util.versionCompare(minversion, this.mopifyversion);
+
+        // If the minversion is greater than the token's version
+        // we refresh the token
+        if((compare === 1 || compare === false) && ServiceManager.isEnabled("spotify")){
+            console.log("version");
+            this.disconnect();
+            this.login();
+        }
+    };
+
+    /**
      * Open the Spotify login screen and start asking for the key
      * The key will be saved on the bitlabs.nl localstorage which can be accessed
      * through the created iframe
@@ -177,7 +203,7 @@ angular.module("mopify.services.spotifylogin", [
     SpotifyLogin.prototype.login = function(){
         var that = this;
         var deferred = $q.defer();
-
+        console.log("Login called");
         if(ServiceManager.isEnabled("spotify") !== true){
             deferred.reject();
         }
@@ -198,7 +224,8 @@ angular.module("mopify.services.spotifylogin", [
                     var tokens = {
                         access_token: that.access_token,
                         refresh_token: that.refresh_token,
-                        expires: that.expires
+                        expires: that.expires,
+                        mopifyversion: VersionManager.version
                     };  
 
                     // Save token and resolve
@@ -306,4 +333,44 @@ angular.module("mopify.services.spotifylogin", [
     });
 
     return spotifyLogin;
+})
+
+/*
+ * Authentication Intercepter which checks spotify's requests results for a 401 error
+ */
+.factory('SpotifyAuthenticationIntercepter', function SpotifyAuthenticationIntercepter($q, $rootScope, $injector) { 
+    "use strict";
+    var spotifyErrors = 0;
+    var retrystarted = false;
+
+    var responseInterceptor = {
+        responseError: function(response) {
+            if(response.status === 401 && response.config.url == "https://api.spotify.com/v1/me"){
+                spotifyErrors++;
+                
+                if(spotifyErrors >= 3 && !retrystarted){
+                    retrystarted = true;
+
+                    /**
+                     * Disconnect from Spotify, login, check the status and return the original response
+                     * and broadcast the spotify:connected event
+                     */
+                    $injector.get('SpotifyLogin').disconnect();
+                    $injector.get('SpotifyLogin').login().then(function(){
+                        $injector.get('SpotifyLogin').getLoginStatus().then(function(resp){
+                            $rootScope.$broadcast("mopify:spotify:connected");
+                            return response;
+                        }); 
+                    });
+                }
+
+                return $q.reject(response);
+            }
+
+            return response;
+        }
+    };
+
+    return responseInterceptor;
 });
+
